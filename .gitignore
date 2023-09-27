@@ -1,6 +1,7 @@
 src/kOSPropMonitor/bin/*
 kOSPropMonitor.userprefs
 *.dll
+*.pdb
 src/kOSPropMonitor/obj/*
 src/.vs
 Build
