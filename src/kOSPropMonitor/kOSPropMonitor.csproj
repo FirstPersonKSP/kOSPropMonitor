@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -9,12 +9,12 @@
     <OutputType>Library</OutputType>
     <RootNamespace>kOSPropMonitor</RootNamespace>
     <AssemblyName>kOSPropMonitor</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>portable</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
     <DefineConstants>DEBUG;</DefineConstants>
@@ -24,44 +24,57 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>full</DebugType>
+    <DebugType>portable</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
     <Prefer32Bit>false</Prefer32Bit>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RunPostBuildEvent>Always</RunPostBuildEvent>
+  </PropertyGroup>
+  <!--Import targets now, which will import the .csproj.user where the path to the KSP install root must be defined in ReferencePath-->
+  <!--This must be done after the main project poperties are defined because it needs the target framework property to be defined -->
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!--Parse KSP platform-specific paths and set the start action-->
+  <PropertyGroup>
+    <KSPExecutable Condition="$([MSBuild]::IsOsPlatform('Windows'))">KSP_x64.exe</KSPExecutable>
+    <KSPExecutable Condition="$([MSBuild]::IsOsPlatform('OSX'))">KSP.app</KSPExecutable>
+    <KSPExecutable Condition="$([MSBuild]::IsOsPlatform('Linux'))">KSP.x86_64</KSPExecutable>
+    <ManagedRelativePath Condition="$([MSBuild]::IsOsPlatform('Windows'))">KSP_x64_Data\Managed</ManagedRelativePath>
+    <ManagedRelativePath Condition="$([MSBuild]::IsOsPlatform('OSX'))">KSP.app\Contents\Resources\Data\Managed</ManagedRelativePath>
+    <ManagedRelativePath Condition="$([MSBuild]::IsOsPlatform('Linux'))">KSP_Data\Managed</ManagedRelativePath>
+    <ManagedPath>$(ReferencePath)$(ManagedRelativePath)</ManagedPath>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(ReferencePath)$(KSPExecutable)</StartProgram>
+    <StartWorkingDirectory>$(ReferencePath)</StartWorkingDirectory>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="JsonFx">
-      <HintPath>..\..\GameData\kPM\JsonFx.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="$(ReferencePath)GameData\kPM\JsonFx.dll">
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\Assembly-CSharp.dll</HintPath>
+    <Reference Include="$(ManagedPath)\Assembly-CSharp.dll">
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>..\..\UnityEngine.dll</HintPath>
+    <Reference Include="$(ManagedPath)\UnityEngine.dll">
       <Private>False</Private>
     </Reference>
-    <Reference Include="kOS">
-      <HintPath>..\..\kOS.dll</HintPath>
+    <Reference Include="$(ReferencePath)GameData\kOS\Plugins\kOS.dll">
       <Private>False</Private>
     </Reference>
-    <Reference Include="kOS.Safe">
-      <HintPath>..\..\kOS.Safe.dll</HintPath>
+    <Reference Include="$(ReferencePath)GameData\kOS\Plugins\kOS.Safe.dll">
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="$(ManagedPath)\UnityEngine.CoreModule.dll">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="$(ManagedPath)\UnityEngine.IMGUIModule.dll">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -84,36 +97,7 @@
       </Properties>
     </MonoDevelop>
   </ProjectExtensions>
-  <Target Name="PostBuildMacros">
-    <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
-      <Output TaskParameter="Assemblies" ItemName="Targets" />
-    </GetAssemblyIdentity>
-    <ItemGroup>
-      <VersionNumber Include="@(Targets->'%(Version)')" />
-    </ItemGroup>
-  </Target>
   <PropertyGroup>
-    <PostBuildEventDependsOn>
-    $(PostBuildEventDependsOn);
-    PostBuildMacros;
-  </PostBuildEventDependsOn>
-    <PostBuildEvent>rmdir "$(ProjectDir)..\..\Build" /s /q
-mkdir "$(ProjectDir)..\..\Build"
-mkdir "$(ProjectDir)..\..\Build\kPM"
-
-xcopy "$(TargetDir)$(ProjectName).dll" "$(ProjectDir)..\..\Build\kPM" /y
-xcopy "$(ProjectDir)..\..\GameData\kPM" "$(ProjectDir)..\..\Build\kPM" /e /y /i /r
-
-mkdir "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)"
-mkdir "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)\GameData"
-xcopy "$(ProjectDir)..\..\Build\kPM" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)\GameData\kPM" /e /y /i /r
-xcopy "$(ProjectDir)..\..\README.md" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /y
-xcopy "$(ProjectDir)..\..\LICENSE" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /y
-xcopy "$(ProjectDir)..\..\JSONFX LICENSE" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /y
-xcopy "$(ProjectDir)..\..\Optional" "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)\Optional" /e /y /i /r
-
-powershell Compress-Archive -Path "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" -DestinationPath "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber).zip"
-
-rmdir "$(ProjectDir)..\..\Build\kOSPropMonitor-@(VersionNumber)" /s /q</PostBuildEvent>
+    <PostBuildEvent>xcopy /Y $(TargetDir)$(TargetName).* $(SolutionDir)..\GameData\kPM\</PostBuildEvent>
   </PropertyGroup>
 </Project>
